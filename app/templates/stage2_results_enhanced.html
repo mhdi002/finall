@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-success text-white shadow-lg">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h1 class="h2 mb-0">
+                                <i class="fas fa-coins me-2"></i>{{ title }}
+                            </h1>
+                            {% if report.date_range %}
+                                <p class="mb-0 opacity-75">{{ report.date_range }}</p>
+                            {% else %}
+                                <p class="mb-0 opacity-75">All Time Data Analysis</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-{% if report.formatted_table %}table{% else %}chart-pie{% endif %} fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if report.formatted_table %}
+        <!-- TABLE MODE: Insufficient data for charts - show formatted table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-info border-0 shadow-sm">
+                    <div class="d-flex">
+                        <i class="fas fa-info-circle me-3 mt-1"></i>
+                        <div>
+                            <h6 class="mb-2">Limited Data View</h6>
+                            <p class="mb-0">Due to insufficient data for meaningful chart visualization, displaying summary table instead. 
+                            Upload more data files to enable advanced chart analysis.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formatted Summary Table (Google Apps Script style) -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calculator me-2"></i>Financial Summary Report
+                            {% if report.date_range %}
+                                <small class="opacity-75 ms-2">({{ report.date_range }})</small>
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="summary-table">
+                                <tbody>
+                                    {% for row in report.report_data %}
+                                        {% if row[0] and row[1] %}
+                                            {% if row[0] == 'Date Range' %}
+                                                <tr class="table-primary">
+                                                    <td class="fw-bold py-3">
+                                                        <i class="fas fa-calendar-alt me-2"></i>{{ row[0] }}
+                                                    </td>
+                                                    <td class="text-end py-3 fw-bold">{{ row[1] }}</td>
+                                                </tr>
+                                            {% elif row[0] == '' %}
+                                                <!-- Skip empty rows -->
+                                            {% else %}
+                                                <tr class="financial-row">
+                                                    <td class="py-3">
+                                                        {% if 'Deposit' in row[0] and 'Fee' not in row[0] %}
+                                                            <i class="fas fa-arrow-down text-success me-2"></i>
+                                                            <span class="badge bg-success-soft text-success me-2">INFLOW</span>
+                                                        {% elif 'Withdraw' in row[0] or 'Withdrawal' in row[0] %}
+                                                            <i class="fas fa-arrow-up text-danger me-2"></i>
+                                                            <span class="badge bg-danger-soft text-danger me-2">OUTFLOW</span>
+                                                        {% elif 'Fee' in row[0] %}
+                                                            <i class="fas fa-coins text-warning me-2"></i>
+                                                            <span class="badge bg-warning-soft text-warning me-2">FEE</span>
+                                                        {% elif 'Rebate' in row[0] %}
+                                                            <i class="fas fa-gift text-info me-2"></i>
+                                                            <span class="badge bg-info-soft text-info me-2">REBATE</span>
+                                                        {% else %}
+                                                            <i class="fas fa-chart-line text-secondary me-2"></i>
+                                                            <span class="badge bg-secondary-soft text-secondary me-2">OTHER</span>
+                                                        {% endif %}
+                                                        <span class="fw-semibold">{{ row[0] }}</span>
+                                                    </td>
+                                                    <td class="text-end py-3">
+                                                        <span class="h5 mb-0 
+                                                            {% if 'Deposit' in row[0] and 'Fee' not in row[0] %}text-success
+                                                            {% elif 'Withdraw' in row[0] or 'Withdrawal' in row[0] %}text-danger
+                                                            {% elif 'Fee' in row[0] %}text-warning
+                                                            {% elif 'Rebate' in row[0] %}text-info
+                                                            {% else %}text-dark{% endif %}">
+                                                            ${{ row[1] }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="row text-center">
+                            <div class="col-md-3 mb-2">
+                                <small class="text-muted">Total Entries</small><br>
+                                <strong class="text-dark">{{ report.report_data|length - 2 }}</strong>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <small class="text-muted">Report Type</small><br>
+                                <strong class="text-primary">Summary Table</strong>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <small class="text-muted">Generated</small><br>
+                                <strong class="text-info">{{ moment().format('DD/MM/YYYY HH:mm') if moment else 'Now' }}</strong>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <small class="text-muted">Status</small><br>
+                                <span class="badge bg-success">Complete</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- CHART MODE: Sufficient data - show charts and detailed analysis -->
+        
+        <!-- Financial Summary Cards -->
+        <div class="row mb-4">
+            {% set key_metrics = {
+                'Total Deposits': (report.calculations.get('M2p Deposit', 0) + report.calculations.get('Settlement Deposit', 0) + report.calculations.get('CRM Deposit Total', 0)),
+                'Total Withdrawals': (report.calculations.get('M2p Withdrawal', 0) + report.calculations.get('Settlement Withdrawal', 0) + report.calculations.get('CRM Withdraw Total', 0)),
+                'Total Rebate': report.calculations.get('Total Rebate', 0),
+                'Net Flow': 0
+            } %}
+            {% set _ = key_metrics.update({'Net Flow': key_metrics['Total Deposits'] - key_metrics['Total Withdrawals']}) %}
+            
+            {% for metric, value in key_metrics.items() %}
+            <div class="col-md-3 mb-3">
+                <div class="card border-0 shadow h-100">
+                    <div class="card-body text-center">
+                        <div class="text-{% if value >= 0 %}success{% else %}danger{% endif %} mb-2">
+                            <i class="fas fa-{% if metric == 'Total Deposits' %}arrow-down{% elif metric == 'Total Withdrawals' %}arrow-up{% elif metric == 'Total Rebate' %}gift{% else %}exchange-alt{% endif %} fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">{{ metric }}</h5>
+                        <h3 class="text-{% if value >= 0 %}success{% else %}danger{% endif %}">${{ "{:,.2f}".format(value) }}</h3>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Financial Analysis Charts
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if chart_data %}
+                            <div class="row">
+                                <div class="col-lg-6 mb-4">
+                                    <div id="volume-chart"></div>
+                                </div>
+                                <div class="col-lg-6 mb-4">
+                                    <div id="fee-chart"></div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div id="summary-chart"></div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-chart-line fa-3x mb-3"></i>
+                                <p>No data available for chart generation</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Financial Report -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table me-2"></i>Detailed Financial Report
+                        </h5>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm" onclick="exportToCSV()">
+                                <i class="fas fa-download me-1"></i>Export CSV
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="printReport()">
+                                <i class="fas fa-print me-1"></i>Print
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="financial-report-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Category</th>
+                                        <th class="text-end">Amount (USD)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in report.report_data %}
+                                        {% if row[0] and row[1] %}
+                                            <tr{% if row[0] == 'Date Range' %} class="table-info"{% endif %}>
+                                                <td>
+                                                    {% if row[0] in ['M2p Deposit', 'Settlement Deposit', 'CRM Deposit Total'] %}
+                                                        <i class="fas fa-arrow-down text-success me-2"></i>
+                                                    {% elif row[0] in ['M2p Withdrawal', 'Settlement Withdrawal', 'CRM Withdraw Total'] %}
+                                                        <i class="fas fa-arrow-up text-danger me-2"></i>
+                                                    {% elif 'Fee' in row[0] %}
+                                                        <i class="fas fa-coins text-warning me-2"></i>
+                                                    {% elif 'Rebate' in row[0] %}
+                                                        <i class="fas fa-gift text-info me-2"></i>
+                                                    {% endif %}
+                                                    {{ row[0] }}
+                                                </td>
+                                                <td class="text-end">
+                                                    {% if row[0] != 'Date Range' %}
+                                                        ${{ row[1] }}
+                                                    {% else %}
+                                                        {{ row[1] }}
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="row">
+        <div class="col-12 text-center">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('main.generate_stage2_report') }}" class="btn btn-primary">
+                    <i class="fas fa-redo me-1"></i>Generate New Report
+                </a>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-home me-1"></i>Back to Dashboard
+                </a>
+                {% if report.formatted_table %}
+                    <button class="btn btn-outline-info" onclick="exportTableToCSV()">
+                        <i class="fas fa-download me-1"></i>Export Summary
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not report.formatted_table %}
+<!-- Plotly Charts (only load if we're in chart mode) -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+{% if chart_data %}
+// Volume Comparison Chart
+const volumeData = {{ chart_data.volumes | tojson }};
+const volumeTrace = {
+    x: Object.keys(volumeData),
+    y: Object.values(volumeData),
+    type: 'bar',
+    marker: {
+        color: ['#4CAF50', '#4CAF50', '#4CAF50', '#FF5722', '#FF5722', '#FF5722']
+    }
+};
+Plotly.newPlot('volume-chart', [volumeTrace], {
+    title: 'Transaction Volumes by Category',
+    yaxis: { title: 'Amount (USD)' }
+});
+
+// Fee Distribution Chart
+const feeData = {{ chart_data.fees | tojson }};
+const feeTrace = {
+    labels: Object.keys(feeData),
+    values: Object.values(feeData),
+    type: 'pie',
+    marker: {
+        colors: ['#FF9800', '#F44336', '#2196F3']
+    }
+};
+Plotly.newPlot('fee-chart', [feeTrace], {
+    title: 'Fee Distribution'
+});
+
+// Summary Chart
+const summaryData = {{ chart_data.calculations | tojson }};
+const summaryCategories = ['M2p Deposit', 'Settlement Deposit', 'CRM Deposit Total', 'M2p Withdrawal', 'Settlement Withdrawal', 'CRM Withdraw Total'];
+const summaryValues = summaryCategories.map(cat => summaryData[cat] || 0);
+const summaryColors = summaryCategories.map(cat => cat.includes('Deposit') ? '#4CAF50' : '#FF5722');
+
+const summaryTrace = {
+    x: summaryCategories,
+    y: summaryValues,
+    type: 'bar',
+    marker: { color: summaryColors }
+};
+Plotly.newPlot('summary-chart', [summaryTrace], {
+    title: 'Complete Financial Overview',
+    yaxis: { title: 'Amount (USD)' }
+});
+{% endif %}
+
+// Export functionality for detailed table
+function exportToCSV() {
+    const table = document.getElementById('financial-report-table');
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = [], cols = rows[i].querySelectorAll('td, th');
+        for (let j = 0; j < cols.length; j++) {
+            row.push(cols[j].innerText);
+        }
+        csv.push(row.join(','));
+    }
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'financial_report_{{ start_date.strftime("%Y%m%d") if start_date else "all_time" }}.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function printReport() {
+    window.print();
+}
+</script>
+{% endif %}
+
+{% if report.formatted_table %}
+<script>
+// Export functionality for summary table
+function exportTableToCSV() {
+    const table = document.getElementById('summary-table');
+    let csv = [];
+    csv.push(['Category', 'Amount (USD)']); // Add header
+    
+    const rows = table.querySelectorAll('tr.financial-row');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const cols = rows[i].querySelectorAll('td');
+        if (cols.length >= 2) {
+            const category = cols[0].innerText.replace(/[^\w\s]/gi, '').trim(); // Clean up category text
+            const amount = cols[1].innerText.trim();
+            csv.push([category, amount]);
+        }
+    }
+    
+    const csvContent = csv.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'financial_summary_{{ start_date.strftime("%Y%m%d") if start_date else "all_time" }}.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endif %}
+
+<style>
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+}
+
+.card {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.financial-row {
+    transition: background-color 0.2s ease;
+}
+
+.financial-row:hover {
+    background-color: rgba(0,123,255,0.05);
+}
+
+/* Badge styles for better visual hierarchy */
+.bg-success-soft { background-color: rgba(40, 167, 69, 0.1); }
+.bg-danger-soft { background-color: rgba(220, 53, 69, 0.1); }
+.bg-warning-soft { background-color: rgba(255, 193, 7, 0.1); }
+.bg-info-soft { background-color: rgba(23, 162, 184, 0.1); }
+.bg-secondary-soft { background-color: rgba(108, 117, 125, 0.1); }
+
+.opacity-75 { opacity: 0.75; }
+.opacity-50 { opacity: 0.5; }
+
+@media print {
+    .btn, .card-header button {
+        display: none;
+    }
+    
+    .card {
+        border: 1px solid #dee2e6 !important;
+        box-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,13 @@
+/* Basic styles for the application */
+body {
+    font-family: sans-serif;
+    margin: 2em;
+}
+
+nav {
+    margin-bottom: 1em;
+}
+
+nav a {
+    margin-right: 1em;
+}

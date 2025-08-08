@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 mb-8 shadow-lg">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl font-bold text-gray-900 mb-2">Financial Analysis Report</h1>
+                <p class="text-xl text-gray-600">Comprehensive breakdown of your trading data</p>
+            </div>
+            <div class="hidden md:block">
+                <div class="w-24 h-24 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center animate-pulse-slow">
+                    <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    {% if charts %}
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+            <svg class="w-8 h-8 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+            </svg>
+            Interactive Visualizations
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {% for chart_name, chart_html in charts.items() %}
+            <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div class="animate-fade-in">
+                    {{ chart_html | safe }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabbed Data Tables -->
+    <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
+        <!-- Tab Navigation -->
+        <div class="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <nav class="flex overflow-x-auto">
+                {% set tab_configs = [
+                    ('final-calculations', 'Final Calculations', 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'),
+                    ('a-book-result', 'A Book Analysis', 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'),
+                    ('b-book-result', 'B Book Analysis', 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'),
+                    ('multi-book-result', 'Multi Book Analysis', 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z'),
+                    ('chinese-clients', 'Chinese Clients', 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z'),
+                    ('client-summary', 'Client Summary', 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z')
+                ] %}
+                
+                {% for tab_id, tab_name, icon_path in tab_configs %}
+                <button class="tab-button flex items-center space-x-2 px-6 py-4 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-white hover:bg-opacity-50 transition-all duration-200 whitespace-nowrap border-b-2 border-transparent hover:border-blue-500 {{ 'active bg-white text-blue-600 border-blue-500' if loop.first }}"
+                        onclick="showTab('{{ tab_id }}')" 
+                        id="{{ tab_id }}-tab">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ icon_path }}"/>
+                    </svg>
+                    <span>{{ tab_name }}</span>
+                </button>
+                {% endfor %}
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="p-8">
+            {% for table_name, table_html in tables.items() %}
+            {% set tab_id = table_name.lower().replace(' ', '-') %}
+            <div id="{{ tab_id }}" class="tab-content {{ 'hidden' if not loop.first }} animate-fade-in">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">{{ table_name }}</h3>
+                    <p class="text-gray-600">
+                        {% if 'Final Calculations' in table_name %}
+                        Summary of key financial metrics and calculations across all books
+                        {% elif 'A Book' in table_name %}
+                        Analysis of A Book transactions and performance metrics
+                        {% elif 'B Book' in table_name %}
+                        Analysis of B Book transactions and performance metrics
+                        {% elif 'Multi Book' in table_name %}
+                        Analysis of Multi Book transactions and performance metrics
+                        {% elif 'Chinese' in table_name %}
+                        Dedicated analysis for Chinese client segment
+                        {% elif 'Client Summary' in table_name %}
+                        Consolidated summary across all client accounts
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div class="overflow-x-auto bg-gray-50 rounded-2xl border border-gray-200">
+                    <div class="table-container">
+                        {{ table_html | safe }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="{{ url_for('main.upload_file') }}" 
+           class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            <span>Upload New Files</span>
+        </a>
+        
+        <a href="{{ url_for('main.dashboard') }}" 
+           class="bg-white hover:bg-gray-50 text-gray-700 px-8 py-4 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl border-2 border-gray-200 hover:border-gray-300 flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            <span>Back to Dashboard</span>
+        </a>
+        
+        <button onclick="exportData()" 
+                class="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span>Export Data</span>
+        </button>
+    </div>
+</div>
+
+<style>
+.table-container table {
+    width: 100% !important;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.table-container th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    padding: 12px 16px !important;
+    text-align: left !important;
+    border: none !important;
+}
+
+.table-container td {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    transition: background-color 0.2s ease;
+}
+
+.table-container tr:nth-child(even) td {
+    background-color: #f9fafb !important;
+}
+
+.table-container tr:hover td {
+    background-color: #f3f4f6 !important;
+}
+
+.table-container tr:last-child td {
+    font-weight: 600 !important;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+    border-top: 2px solid #f59e0b !important;
+}
+
+.tab-button.active {
+    background: white;
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    transform: translateY(1px);
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+function showTab(tabId) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active', 'bg-white', 'text-blue-600', 'border-blue-500');
+        button.classList.add('text-gray-600', 'border-transparent');
+    });
+    
+    // Show selected tab content
+    const selectedContent = document.getElementById(tabId);
+    if (selectedContent) {
+        selectedContent.classList.remove('hidden');
+        selectedContent.classList.add('animate-fade-in');
+    }
+    
+    // Add active class to selected tab
+    const selectedTab = document.getElementById(tabId + '-tab');
+    if (selectedTab) {
+        selectedTab.classList.add('active', 'bg-white', 'text-blue-600', 'border-blue-500');
+        selectedTab.classList.remove('text-gray-600', 'border-transparent');
+    }
+}
+
+function exportData() {
+    // Create a simple CSV export of visible data
+    const activeTab = document.querySelector('.tab-content:not(.hidden)');
+    const table = activeTab.querySelector('table');
+    
+    if (table) {
+        let csv = '';
+        const rows = table.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const cols = row.querySelectorAll('th, td');
+            const rowData = Array.from(cols).map(col => {
+                return '"' + col.textContent.trim().replace(/"/g, '""') + '"';
+            });
+            csv += rowData.join(',') + '\n';
+        });
+        
+        // Create download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'financial_report_' + new Date().toISOString().split('T')[0] + '.csv';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+}
+
+// Initialize first tab as active on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const firstTab = document.querySelector('.tab-button');
+    if (firstTab && !firstTab.classList.contains('active')) {
+        const tabId = firstTab.id.replace('-tab', '');
+        showTab(tabId);
+    }
+});
+
+// Add smooth scrolling to charts
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+            behavior: 'smooth'
+        });
+    });
+});
+</script>
+{% endblock %}

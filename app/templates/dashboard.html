@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white shadow-lg">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h1 class="h2 mb-0">Welcome back, {{ current_user.username }}!</h1>
+                            <p class="mb-0 opacity-75">Financial Report Processing Dashboard</p>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-area fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-primary mb-2">
+                        <i class="fas fa-upload fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Upload Files</h5>
+                    <p class="card-text text-muted">Upload CSV/XLSX files for processing</p>
+                    <a href="{{ url_for('main.upload_file') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>Upload
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-center"><i class="fas fa-chart-line me-2"></i>Generate Stage 2 Report</h5>
+                    <form method="POST" action="{{ url_for('main.generate_stage2_report') }}" class="mt-3">
+                        {{ form.hidden_tag() }}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.start_date.label(class="form-label") }}
+                                {{ form.start_date(class="form-control", type="datetime-local") }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.end_date.label(class="form-label") }}
+                                {{ form.end_date(class="form-control", type="datetime-local") }}
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-success", value="Generate Stage 2 Report") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-info mb-2">
+                        <i class="fas fa-cogs fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Original Processing</h5>
+                    <p class="card-text text-muted">Traditional deal processing</p>
+                    {% if file_status.get('deals') and file_status.get('excluded') and file_status.get('vip') %}
+                        <a href="{{ url_for('main.generate_report') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-play me-1"></i>Process
+                        </a>
+                    {% else %}
+                        <span class="btn btn-outline-secondary btn-sm disabled">Upload Required Files</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if current_user.has_role('Owner') %}
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-warning mb-2">
+                        <i class="fas fa-user-shield fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Admin Panel</h5>
+                    <p class="card-text text-muted">System administration</p>
+                    <a href="{{ url_for('main.admin') }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-tools me-1"></i>Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- File Upload Status -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>File Upload Status
+                        <button class="btn btn-sm btn-outline-primary float-end" onclick="refreshStatus()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="file-status-container">
+                        
+                        <!-- Original Processing Files -->
+                        <div class="col-lg-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-chart-line me-2"></i>Original Processing Files
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Deals File:</span>
+                                    {% if file_status.get('deals') %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>{{ file_status['deals']['filename'] }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Not uploaded</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Excluded Accounts:</span>
+                                    {% if file_status.get('excluded') %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>{{ file_status['excluded']['filename'] }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Not uploaded</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>VIP Clients:</span>
+                                    {% if file_status.get('vip') %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>{{ file_status['vip']['filename'] }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Not uploaded</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 2 Files -->
+                        <div class="col-lg-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="fas fa-coins me-2"></i>Stage 2: Financial Data Files
+                            </h6>
+                            
+                            {% set stage2_files = [
+                                ('payment', 'Payment Data'),
+                                ('ib_rebate', 'IB Rebate'),
+                                ('crm_withdrawals', 'CRM Withdrawals'),
+                                ('crm_deposit', 'CRM Deposit'),
+                                ('account_list', 'Account List')
+                            ] %}
+                            
+                            {% for file_type, display_name in stage2_files %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>{{ display_name }}:</span>
+                                        {% if file_status.get(file_type) %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>{{ file_status[file_type]['filename'] }}
+                                                {% if file_status[file_type]['processed'] %}
+                                                    <i class="fas fa-cog ms-1" title="Processed"></i>
+                                                {% endif %}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Not uploaded</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="d-flex gap-2 flex-wrap justify-content-center">
+                            <a href="{{ url_for('main.upload_file') }}" class="btn btn-primary">
+                                <i class="fas fa-upload me-1"></i>Upload More Files
+                            </a>
+                            
+                            
+                            {% if file_status.get('deals') and file_status.get('excluded') and file_status.get('vip') %}
+                                <a href="{{ url_for('main.generate_report') }}" class="btn btn-info">
+                                    <i class="fas fa-play me-1"></i>Process Original Deals
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshStatus() {
+    // Simple page refresh for now - can be enhanced with AJAX
+    location.reload();
+}
+
+// Auto-refresh every 30 seconds if user is actively on the page
+let refreshInterval;
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(refreshInterval);
+    } else {
+        refreshInterval = setInterval(refreshStatus, 30000);
+    }
+});
+
+// Start auto-refresh
+refreshInterval = setInterval(refreshStatus, 30000);
+</script>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.card {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.opacity-75 { opacity: 0.75; }
+.opacity-50 { opacity: 0.5; }
+</style>
+{% endblock %}

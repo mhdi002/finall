@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-upload me-2"></i>Dynamic File Upload System</h4>
+                    <small class="text-light">Upload any combination of files - no need to upload all at once!</small>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Alert for instructions -->
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>How it works:</strong> Select and upload any files you have available. 
+                        The system supports both CSV and XLSX formats. Stage 2 files (Payment Data, IB Rebate, etc.) 
+                        are processed immediately, while original files (Deals, Excluded, VIP) are prepared for report generation.
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row">
+                            <!-- Original Deal Processing Files -->
+                            <div class="col-lg-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Original Deal Processing Files</h5>
+                                        <small class="text-muted">For traditional deal analysis and report generation</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            {{ form.deals_csv.label(class="form-label") }}
+                                            {{ form.deals_csv(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">Main deals data for A/B/Multi book analysis</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.excluded_csv.label(class="form-label") }}
+                                            {{ form.excluded_csv(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">List of excluded account numbers</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.vip_csv.label(class="form-label") }}
+                                            {{ form.vip_csv(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">VIP client account numbers</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Stage 2: Enhanced Financial Files -->
+                            <div class="col-lg-6">
+                                <div class="card mb-4">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0"><i class="fas fa-coins me-2"></i>Stage 2: Financial Data Files</h5>
+                                        <small>Advanced payment processing and financial analysis</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            {{ form.payment_data.label(class="form-label") }}
+                                            {{ form.payment_data(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">M2p & Settlement deposits/withdrawals</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.ib_rebate.label(class="form-label") }}
+                                            {{ form.ib_rebate(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">IB rebate transaction data</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.crm_withdrawals.label(class="form-label") }}
+                                            {{ form.crm_withdrawals(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">CRM withdrawal requests and reviews</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.crm_deposit.label(class="form-label") }}
+                                            {{ form.crm_deposit(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">CRM deposit transactions and methods</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.account_list.label(class="form-label") }}
+                                            {{ form.account_list(class="form-control", onchange="updateFileName(this)") }}
+                                            <div class="form-text">Complete account list with groups</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload Progress Indicator -->
+                        <div id="upload-progress" class="progress mb-3" style="display: none; height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                Uploading files...
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                    {{ form.submit(class="btn btn-primary btn-lg", onclick="showUploadProgress()") }}
+                                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Upload Progress & Validation Scripts -->
+<script>
+function updateFileName(input) {
+    const fileName = input.files[0]?.name;
+    if (fileName) {
+        const label = input.parentElement.querySelector('.form-text');
+        label.innerHTML = `<i class="fas fa-check text-success"></i> Selected: ${fileName}`;
+    }
+}
+
+function showUploadProgress() {
+    // Check if any file is selected
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    let hasFile = false;
+    
+    fileInputs.forEach(input => {
+        if (input.files.length > 0) {
+            hasFile = true;
+        }
+    });
+    
+    if (hasFile) {
+        document.getElementById('upload-progress').style.display = 'block';
+        
+        // Simulate progress
+        let progress = 0;
+        const progressBar = document.querySelector('.progress-bar');
+        const interval = setInterval(() => {
+            progress += 10;
+            progressBar.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress);
+            
+            if (progress >= 90) {
+                progressBar.textContent = 'Processing files...';
+                clearInterval(interval);
+            } else {
+                progressBar.textContent = `Uploading... ${progress}%`;
+            }
+        }, 200);
+    } else {
+        alert('Please select at least one file to upload.');
+        return false;
+    }
+}
+
+// Bootstrap validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+</style>
+{% endblock %}

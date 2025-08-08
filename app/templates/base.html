@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ title }} - Financial Report Portal</title>
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        animation: {
+                            'fade-in': 'fadeIn 0.5s ease-in-out',
+                            'slide-up': 'slideUp 0.5s ease-out',
+                            'pulse-slow': 'pulse 3s infinite',
+                            'bounce-subtle': 'bounceSubtle 1s ease-in-out infinite',
+                            'glow': 'glow 2s ease-in-out infinite alternate',
+                            'gradient': 'gradient 3s ease infinite',
+                        },
+                        keyframes: {
+                            fadeIn: {
+                                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                                '100%': { opacity: '1', transform: 'translateY(0)' }
+                            },
+                            slideUp: {
+                                '0%': { opacity: '0', transform: 'translateY(30px)' },
+                                '100%': { opacity: '1', transform: 'translateY(0)' }
+                            },
+                            bounceSubtle: {
+                                '0%, 100%': { transform: 'translateY(0)' },
+                                '50%': { transform: 'translateY(-3px)' }
+                            },
+                            glow: {
+                                '0%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.5)' },
+                                '100%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' }
+                            },
+                            gradient: {
+                                '0%, 100%': { backgroundPosition: '0% 50%' },
+                                '50%': { backgroundPosition: '100% 50%' }
+                            }
+                        },
+                        backgroundImage: {
+                            'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                            'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+                        }
+                    }
+                }
+            }
+        </script>
+        <style>
+            .loading-spinner {
+                border: 3px solid #f3f4f6;
+                border-top: 3px solid #3b82f6;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .gradient-bg {
+                background: linear-gradient(-45deg, #667eea, #764ba2, #667eea, #f093fb);
+                background-size: 400% 400%;
+                animation: gradient 6s ease infinite;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 text-gray-900 min-h-screen">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-md bg-white/95">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <a href="{{ url_for('main.index') }}" class="flex items-center space-x-2 group">
+                            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm group-hover:scale-110 transition-transform duration-200">
+                                FR
+                            </div>
+                            <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                Financial Reports
+                            </span>
+                        </a>
+                    </div>
+                    
+                    <div class="hidden md:flex items-center space-x-8">
+                        <a href="{{ url_for('main.index') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                            Home
+                        </a>
+                        {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('main.dashboard') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('main.upload_file') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                            Upload
+                        </a>
+                        {% if current_user.has_role('Owner') %}
+                        <a href="{{ url_for('main.admin') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                            Admin
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        {% if current_user.is_authenticated %}
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                {{ current_user.username[0].upper() }}
+                            </div>
+                            <span class="text-sm text-gray-700">{{ current_user.username }}</span>
+                        </div>
+                        <a href="{{ url_for('main.logout') }}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105">
+                            Logout
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('main.login') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                            Login
+                        </a>
+                        <a href="{{ url_for('main.register') }}" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                            Register
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+            {% for category, message in messages %}
+                <div class="animate-slide-up mb-4 p-4 rounded-lg shadow-md border-l-4 {{ 'bg-green-50 border-green-400 text-green-800' if category == 'success' else 'bg-red-50 border-red-400 text-red-800' if category == 'danger' else 'bg-yellow-50 border-yellow-400 text-yellow-800' if category == 'warning' else 'bg-blue-50 border-blue-400 text-blue-800' }}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                {% if category == 'success' %}
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                {% elif category == 'danger' %}
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                {% else %}
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                {% endif %}
+                            </svg>
+                            <span class="font-medium">{{ message }}</span>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Main Content -->
+        <main class="animate-fade-in">
+            {% block content %}{% endblock %}
+            {% block app_content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white shadow-lg border-t border-gray-200 mt-16">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="text-center">
+                    <p class="text-gray-600">© 2025 Financial Report Portal. Built with modern technologies.</p>
+                </div>
+            </div>
+        </footer>
+
+        <script>
+            // Add smooth scrolling and enhanced interactions
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // Auto-dismiss flash messages after 5 seconds
+            setTimeout(() => {
+                document.querySelectorAll('.animate-slide-up').forEach(el => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(-10px)';
+                    setTimeout(() => el.remove(), 300);
+                });
+            }, 5000);
+        </script>
+    </body>
+</html>

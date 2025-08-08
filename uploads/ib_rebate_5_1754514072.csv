@@ -1,0 +1,4 @@
+﻿Platform,Order ID,Account ID,Volume,Symbol,Swaps,Commission,Profit,Trader,Receiver,Rebate Platform,Rebate Account,Rebate Rules,Commission Parameter,Formula,Currency,Rebate,Open Time,Close Time,Rebate Time,Status,Failure Reason,Transaction ID
+mt5 - RocoBroker-Promotion,171546,30116,0.01,XAUUSD.l,0,0,2.43,مینا(geqvelot),Shayan(ja8eygpu),Wallet,y4one6ik,Metal & crypto & Energy Lion,5,0.01 * 5 * 1 ,USD,0.05,2025-08-01 17:14:23,2025-08-01 17:27:40,2025-08-01 17:57:50,Success,,k30Ilmxf
+mt5 - RocoBroker-Promotion,170973,30128,0.1,EURUSD.l,0,0,10.6,اعظم(rfiajlg6),Shayan(ja8eygpu),Wallet,y4one6ik,Forex Lion ,6,0.1 * 6 * 1 ,USD,0.6,2025-08-01 13:21:29,2025-08-01 14:13:00,2025-08-01 14:43:46,Success,,S4DqdOvk
+mt5 - RocoBroker-Promotion,170785,30128,0.1,EURUSD.l,0,0,1.8,اعظم(rfiajlg6),Shayan(ja8eygpu),Wallet,y4one6ik,Forex Lion ,6,0.1 * 6 * 1 ,USD,0.6,2025-08-01 11:42:39,2025-08-01 11:47:55,2025-08-01 12:18:47,Success,,vz6571wo

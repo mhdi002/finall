@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-info text-white shadow-lg">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h1 class="h2 mb-0">
+                                <i class="fas fa-layer-group me-2"></i>{{ title }}
+                            </h1>
+                            {% if start_date and end_date %}
+                                <p class="mb-0 opacity-75">From {{ start_date.strftime('%Y-%m-%d') }} to {{ end_date.strftime('%Y-%m-%d') }}</p>
+                            {% else %}
+                                <p class="mb-0 opacity-75">Complete Data Integration Analysis</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sitemap fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-pills nav-justified" id="reportTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
+                        <i class="fas fa-chart-pie me-2"></i>Overview
+                    </button>
+                </li>
+                {% if has_original %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="original-tab" data-bs-toggle="pill" data-bs-target="#original" type="button" role="tab">
+                        <i class="fas fa-chart-line me-2"></i>Deal Processing
+                    </button>
+                </li>
+                {% endif %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="stage2-tab" data-bs-toggle="pill" data-bs-target="#stage2" type="button" role="tab">
+                        <i class="fas fa-coins me-2"></i>Financial Data
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="comparison-tab" data-bs-toggle="pill" data-bs-target="#comparison" type="button" role="tab">
+                        <i class="fas fa-balance-scale me-2"></i>Comparison
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="reportTabsContent">
+        
+        <!-- Overview Tab -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+            <div class="row mb-4">
+                <!-- Summary Cards -->
+                {% if has_original and results.original %}
+                    {% set original_final = results.original.get('Final Calculations', None) %}
+                    {% if original_final is not none and not original_final.empty %}
+                        {% set a_book_total = original_final[original_final['Source'] == 'Total A Book']['Value'].iloc[0] if not original_final[original_final['Source'] == 'Total A Book'].empty else 0 %}
+                        {% set b_book_total = original_final[original_final['Source'] == 'Total B Book']['Value'].iloc[0] if not original_final[original_final['Source'] == 'Total B Book'].empty else 0 %}
+                    {% else %}
+                        {% set a_book_total = 0 %}
+                        {% set b_book_total = 0 %}
+                    {% endif %}
+                {% else %}
+                    {% set a_book_total = 0 %}
+                    {% set b_book_total = 0 %}
+                {% endif %}
+
+                {% set stage2_deposits = (results.stage2.calculations.get('M2p Deposit', 0) + results.stage2.calculations.get('Settlement Deposit', 0) + results.stage2.calculations.get('CRM Deposit Total', 0)) %}
+                {% set stage2_withdrawals = (results.stage2.calculations.get('M2p Withdrawal', 0) + results.stage2.calculations.get('Settlement Withdrawal', 0) + results.stage2.calculations.get('CRM Withdraw Total', 0)) %}
+
+                <div class="col-md-6 mb-3">
+                    <div class="card border-primary shadow h-100">
+                        <div class="card-body text-center">
+                            <div class="text-primary mb-2">
+                                <i class="fas fa-chart-line fa-2x"></i>
+                            </div>
+                            <h5 class="card-title">Deal Processing Summary</h5>
+                            {% if has_original %}
+                                <h3 class="text-primary">${{ "{:,.2f}".format(a_book_total + b_book_total) }}</h3>
+                                <p class="card-text text-muted">A Book: ${{ "{:,.2f}".format(a_book_total) }}<br>B Book: ${{ "{:,.2f}".format(b_book_total) }}</p>
+                            {% else %}
+                                <h3 class="text-muted">N/A</h3>
+                                <p class="card-text text-muted">Upload deal files to see this data</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card border-success shadow h-100">
+                        <div class="card-body text-center">
+                            <div class="text-success mb-2">
+                                <i class="fas fa-coins fa-2x"></i>
+                            </div>
+                            <h5 class="card-title">Financial Flow Summary</h5>
+                            <h3 class="text-success">${{ "{:,.2f}".format(stage2_deposits - stage2_withdrawals) }}</h3>
+                            <p class="card-text text-muted">Deposits: ${{ "{:,.2f}".format(stage2_deposits) }}<br>Withdrawals: ${{ "{:,.2f}".format(stage2_withdrawals) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Combined Overview Chart -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-area me-2"></i>Combined Financial Overview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="combined-overview-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Original Processing Tab -->
+        {% if has_original %}
+        <div class="tab-pane fade" id="original" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-table me-2"></i>Deal Processing Results
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if results.original.get('Final Calculations') is not none %}
+                                <div class="table-responsive">
+                                    {{ results.original['Final Calculations'].to_html(classes='table table-striped table-hover', index=False) | safe }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Stage 2 Financial Tab -->
+        <div class="tab-pane fade" id="stage2" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-table me-2"></i>Financial Data Results
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Category</th>
+                                            <th class="text-end">Amount (USD)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in results.stage2.report_data %}
+                                            {% if row[0] and row[1] %}
+                                                <tr>
+                                                    <td>{{ row[0] }}</td>
+                                                    <td class="text-end">
+                                                        {% if row[0] != 'Date Range' %}
+                                                            ${{ row[1] }}
+                                                        {% else %}
+                                                            {{ row[1] }}
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Tab -->
+        <div class="tab-pane fade" id="comparison" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Data Source Comparison
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="comparison-chart"></div>
+                            
+                            <div class="mt-4">
+                                <h6>Key Insights:</h6>
+                                <ul class="list-group list-group-flush">
+                                    {% if has_original %}
+                                        <li class="list-group-item">
+                                            <i class="fas fa-chart-line text-primary me-2"></i>
+                                            <strong>Deal Processing:</strong> Traditional A/B/Multi book analysis with total value of ${{ "{:,.2f}".format(a_book_total + b_book_total) }}
+                                        </li>
+                                    {% endif %}
+                                    <li class="list-group-item">
+                                        <i class="fas fa-coins text-success me-2"></i>
+                                        <strong>Financial Flow:</strong> Net flow of ${{ "{:,.2f}".format(stage2_deposits - stage2_withdrawals) }} ({{ "{:,.2f}".format(stage2_deposits) }} deposits - {{ "{:,.2f}".format(stage2_withdrawals) }} withdrawals)
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="fas fa-gift text-info me-2"></i>
+                                        <strong>Rebates & Fees:</strong> Total rebate of ${{ "{:,.2f}".format(results.stage2.calculations.get('Total Rebate', 0)) }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('main.generate_stage2_report') }}" class="btn btn-primary">
+                    <i class="fas fa-redo me-1"></i>Generate New Report
+                </a>
+                <button class="btn btn-success" onclick="exportCombinedReport()">
+                    <i class="fas fa-download me-1"></i>Export Complete Report
+                </button>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-home me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS for tabs -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<script>
+// Combined Overview Chart
+const overviewData = [
+    {% if has_original %}
+    {
+        x: ['A Book', 'B Book'],
+        y: [{{ a_book_total }}, {{ b_book_total }}],
+        name: 'Deal Processing',
+        type: 'bar',
+        marker: { color: '#007bff' }
+    },
+    {% endif %}
+    {
+        x: ['Deposits', 'Withdrawals', 'Net Flow'],
+        y: [{{ stage2_deposits }}, {{ stage2_withdrawals }}, {{ stage2_deposits - stage2_withdrawals }}],
+        name: 'Financial Flow',
+        type: 'bar',
+        marker: { color: '#28a745' },
+        yaxis: 'y2'
+    }
+];
+
+const overviewLayout = {
+    title: 'Complete Business Overview',
+    xaxis: { title: 'Categories' },
+    yaxis: { title: 'Deal Processing (USD)', side: 'left' },
+    {% if has_original %}
+    yaxis2: { title: 'Financial Flow (USD)', side: 'right', overlaying: 'y' },
+    {% else %}
+    yaxis2: { title: 'Financial Flow (USD)', side: 'left' },
+    {% endif %}
+    barmode: 'group',
+    height: 500
+};
+
+Plotly.newPlot('combined-overview-chart', overviewData, overviewLayout);
+
+// Comparison Chart
+const comparisonCategories = [
+    'Revenue Sources', 
+    'Cash Flow', 
+    'Customer Value'
+];
+
+const comparisonData = [
+    {% if has_original %}
+    {{ a_book_total + b_book_total }},
+    {% else %}
+    0,
+    {% endif %}
+    {{ stage2_deposits - stage2_withdrawals }},
+    {{ results.stage2.calculations.get('Total Rebate', 0) }}
+];
+
+const comparisonTrace = {
+    x: comparisonCategories,
+    y: comparisonData,
+    type: 'bar',
+    marker: {
+        color: ['#007bff', '#28a745', '#17a2b8'],
+        line: { color: 'rgba(0,0,0,0.8)', width: 2 }
+    }
+};
+
+Plotly.newPlot('comparison-chart', [comparisonTrace], {
+    title: 'Business Metrics Comparison',
+    yaxis: { title: 'Amount (USD)' },
+    height: 400
+});
+
+// Export function
+function exportCombinedReport() {
+    // This would typically generate a comprehensive PDF or Excel report
+    alert('Combined report export functionality would be implemented here');
+}
+</script>
+
+<style>
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #0056b3 100%);
+}
+
+.nav-pills .nav-link {
+    border-radius: 25px;
+    margin: 0 5px;
+    transition: all 0.3s ease;
+}
+
+.nav-pills .nav-link:hover {
+    transform: translateY(-2px);
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.card {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.opacity-75 { opacity: 0.75; }
+.opacity-50 { opacity: 0.5; }
+</style>
+{% endblock %}

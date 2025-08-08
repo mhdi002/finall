@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="mx-auto h-16 w-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6 animate-bounce-subtle">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                </svg>
+            </div>
+            <h2 class="text-4xl font-bold text-gray-900 mb-2">Create Account</h2>
+            <p class="text-lg text-gray-600">Join us and start analyzing your financial data</p>
+        </div>
+
+        <!-- Registration Form -->
+        <div class="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
+            <form method="post" class="space-y-6" id="registerForm">
+                {{ form.hidden_tag() }}
+                
+                <!-- Username Field -->
+                <div>
+                    <label for="{{ form.username.id }}" class="block text-sm font-semibold text-gray-900 mb-2">
+                        Username
+                    </label>
+                    <div class="relative">
+                        {{ form.username(class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white", placeholder="Choose a username") }}
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    {% if form.username.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {% for error in form.username.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Email Field -->
+                <div>
+                    <label for="{{ form.email.id }}" class="block text-sm font-semibold text-gray-900 mb-2">
+                        Email Address
+                    </label>
+                    <div class="relative">
+                        {{ form.email(class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white", placeholder="Enter your email") }}
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+                            </svg>
+                        </div>
+                    </div>
+                    {% if form.email.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {% for error in form.email.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Password Field -->
+                <div>
+                    <label for="{{ form.password.id }}" class="block text-sm font-semibold text-gray-900 mb-2">
+                        Password
+                    </label>
+                    <div class="relative">
+                        {{ form.password(class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white", placeholder="Create a strong password", oninput="checkPasswordStrength(this.value)") }}
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <button type="button" onclick="togglePassword('{{ form.password.id }}')" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="passwordStrength" class="mt-2 hidden">
+                        <div class="flex space-x-1">
+                            <div class="h-2 flex-1 rounded-full bg-gray-200" id="strength1"></div>
+                            <div class="h-2 flex-1 rounded-full bg-gray-200" id="strength2"></div>
+                            <div class="h-2 flex-1 rounded-full bg-gray-200" id="strength3"></div>
+                            <div class="h-2 flex-1 rounded-full bg-gray-200" id="strength4"></div>
+                        </div>
+                        <p id="strengthText" class="text-sm mt-1"></p>
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {% for error in form.password.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Confirm Password Field -->
+                <div>
+                    <label for="{{ form.password2.id }}" class="block text-sm font-semibold text-gray-900 mb-2">
+                        Confirm Password
+                    </label>
+                    <div class="relative">
+                        {{ form.password2(class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white", placeholder="Confirm your password") }}
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <button type="button" onclick="togglePassword('{{ form.password2.id }}')" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    {% if form.password2.errors %}
+                        <div class="mt-1 text-sm text-red-600">
+                            {% for error in form.password2.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <div>
+                    <button type="submit" id="registerBtn" class="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        </svg>
+                        <span>Create Account</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Login Link -->
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">
+                    Already have an account?
+                    <a href="{{ url_for('main.login') }}" class="text-green-600 hover:text-green-700 font-semibold transition-colors duration-200 ml-1">
+                        Sign in here
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword(fieldId) {
+    const passwordField = document.getElementById(fieldId);
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+    } else {
+        passwordField.type = 'password';
+    }
+}
+
+function checkPasswordStrength(password) {
+    const strengthIndicator = document.getElementById('passwordStrength');
+    const strengthText = document.getElementById('strengthText');
+    const bars = ['strength1', 'strength2', 'strength3', 'strength4'];
+    
+    strengthIndicator.classList.remove('hidden');
+    
+    // Reset all bars
+    bars.forEach(bar => {
+        document.getElementById(bar).className = 'h-2 flex-1 rounded-full bg-gray-200';
+    });
+    
+    let strength = 0;
+    let text = '';
+    let color = '';
+    
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[\W_]/.test(password)) strength++;
+    
+    switch (strength) {
+        case 0:
+        case 1:
+            text = 'Weak password';
+            color = 'bg-red-500';
+            break;
+        case 2:
+            text = 'Fair password';
+            color = 'bg-yellow-500';
+            break;
+        case 3:
+            text = 'Good password';
+            color = 'bg-blue-500';
+            break;
+        case 4:
+            text = 'Strong password';
+            color = 'bg-green-500';
+            break;
+    }
+    
+    for (let i = 0; i < strength; i++) {
+        document.getElementById(bars[i]).className = `h-2 flex-1 rounded-full ${color}`;
+    }
+    
+    strengthText.textContent = text;
+    strengthText.className = `text-sm mt-1 ${color.replace('bg-', 'text-')}`;
+}
+
+// Handle form submission with loading state
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const registerBtn = document.getElementById('registerBtn');
+    
+    // Show loading state
+    registerBtn.innerHTML = `
+        <div class="loading-spinner mr-2"></div>
+        <span>Creating Account...</span>
+    `;
+    registerBtn.disabled = true;
+    registerBtn.classList.add('opacity-75', 'cursor-not-allowed');
+});
+
+// Add input focus animations
+document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('focus', function() {
+        this.parentElement.classList.add('animate-glow');
+    });
+    
+    input.addEventListener('blur', function() {
+        this.parentElement.classList.remove('animate-glow');
+    });
+});
+</script>
+{% endblock %}
