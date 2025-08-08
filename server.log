@@ -1,0 +1,82 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://10.64.136.101:5001
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [06/Aug/2025 20:56:00] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 20:56:00] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 20:56:00] "GET /dashboard HTTP/1.1" 200 -
+DEBUG: Form created successfully: <app.forms.DynamicUploadForm object at 0xfc1550a70ed0>
+DEBUG: Form fields: ['deals_csv', 'excluded_csv', 'vip_csv', 'payment_data', 'ib_rebate', 'crm_withdrawals', 'crm_deposit', 'account_list', 'submit', 'csrf_token']
+DEBUG: Rendering template with form
+127.0.0.1 - - [06/Aug/2025 20:56:00] "GET /upload HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 20:59:18] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 21:01:08] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 21:01:10] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 21:01:10] "GET /dashboard HTTP/1.1" 200 -
+DEBUG: Form created successfully: <app.forms.DynamicUploadForm object at 0xfc154e42ee90>
+DEBUG: Form fields: ['deals_csv', 'excluded_csv', 'vip_csv', 'payment_data', 'ib_rebate', 'crm_withdrawals', 'crm_deposit', 'account_list', 'submit', 'csrf_token']
+DEBUG: Rendering template with form
+127.0.0.1 - - [06/Aug/2025 21:01:11] "GET /upload HTTP/1.1" 200 -
+DEBUG: Form created successfully: <app.forms.DynamicUploadForm object at 0xfc154dafe810>
+DEBUG: Form fields: ['deals_csv', 'excluded_csv', 'vip_csv', 'payment_data', 'ib_rebate', 'crm_withdrawals', 'crm_deposit', 'account_list', 'submit', 'csrf_token']
+127.0.0.1 - - [06/Aug/2025 21:01:12] "[32mPOST /upload HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 21:01:12] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 21:01:15] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 21:01:15] "GET /dashboard HTTP/1.1" 200 -
+DEBUG: Form created successfully: <app.forms.DynamicUploadForm object at 0xfc154e4bc210>
+DEBUG: Form fields: ['deals_csv', 'excluded_csv', 'vip_csv', 'payment_data', 'ib_rebate', 'crm_withdrawals', 'crm_deposit', 'account_list', 'submit', 'csrf_token']
+DEBUG: Rendering template with form
+127.0.0.1 - - [06/Aug/2025 21:01:16] "GET /upload HTTP/1.1" 200 -
+[2025-08-06 21:01:17,442] ERROR in app: Exception on /report/stage2 [GET]
+Traceback (most recent call last):
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask_login/utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routes.py", line 352, in generate_stage2_report
+    return render_template('report_selection.html', title='Generate Reports', form=form)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/root/.venv/lib/python3.11/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/app/app/templates/report_selection.html", line 2, in top-level template code
+    {% import 'bootstrap/wtf.html' as wtf %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: bootstrap/wtf.html
+127.0.0.1 - - [06/Aug/2025 21:01:17] "[35m[1mGET /report/stage2 HTTP/1.1[0m" 500 -
+127.0.0.1 - - [06/Aug/2025 21:01:18] "GET /api/upload_status HTTP/1.1" 200 -
+DEBUG: Form created successfully: <app.forms.DynamicUploadForm object at 0xfc154e4c2090>
+DEBUG: Form fields: ['deals_csv', 'excluded_csv', 'vip_csv', 'payment_data', 'ib_rebate', 'crm_withdrawals', 'crm_deposit', 'account_list', 'submit', 'csrf_token']
+DEBUG: Rendering template with form
+127.0.0.1 - - [06/Aug/2025 21:01:18] "GET /upload HTTP/1.1" 200 -
+DEBUG: Form created successfully: <app.forms.DynamicUploadForm object at 0xfc154e484c10>
+DEBUG: Form fields: ['deals_csv', 'excluded_csv', 'vip_csv', 'payment_data', 'ib_rebate', 'crm_withdrawals', 'crm_deposit', 'account_list', 'submit', 'csrf_token']
+DEBUG: Rendering template with form
+127.0.0.1 - - [06/Aug/2025 21:01:19] "POST /upload HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 21:01:20] "GET /dashboard HTTP/1.1" 200 -

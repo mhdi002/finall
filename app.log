@@ -1,0 +1,89 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://10.64.137.105:5001
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [06/Aug/2025 06:27:06] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:27:14] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:27:24] "GET /register HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:28:05] "GET /register HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:06] "[32mPOST /register HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:29:06] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:17] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:18] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:29:18] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:30] "[32mGET /dashboard HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:29:30] "GET /login?next=/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:30] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:31] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:29:31] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:29:34] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:30:07] "[32mGET /dashboard HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:30:07] "GET /login?next=/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:30:08] "[32mGET /dashboard HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:30:08] "GET /login?next=/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:30:22] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:30:23] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:30:23] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:30:26] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /register HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "POST /register HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /dashboard HTTP/1.1" 200 -
+[2025-08-06 06:34:25,812] ERROR in app: Exception on /upload [GET]
+Traceback (most recent call last):
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask_login/utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routes.py", line 185, in upload_file
+    return render_template('upload.html', title='Upload Files', form=form)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/root/.venv/lib/python3.11/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/app/app/templates/upload.html", line 2, in top-level template code
+    {% import 'bootstrap/wtf.html' as wtf %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/flask/templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: bootstrap/wtf.html
+127.0.0.1 - - [06/Aug/2025 06:34:25] "[35m[1mGET /upload HTTP/1.1[0m" 500 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "[33mGET /report/results HTTP/1.1[0m" 404 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "[32mGET /admin HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "[32mGET /logout HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /index HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "[32mGET /dashboard HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:34:25] "GET /login?next=/dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:37:49] "POST /login HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:37:49] "[32mGET /upload HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Aug/2025 06:37:49] "GET /login?next=/upload HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:41:23] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [06/Aug/2025 06:41:45] "GET / HTTP/1.1" 200 -
