@@ -56,9 +56,16 @@ def process_and_split(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     d = df.copy()
     # USC → USD conversion
     for col in d.select_dtypes(include="object"):
+        # Handle USC -> USD conversion
         d[col] = d[col].astype(str).str.replace(
-            r"(?i)(\d[\d\.\-]*)\s*usc",
-            lambda m: f"{round4(float(m.group(1)) / 100):.4f} USD",
+            r"(?i)([\d\.\-]+)\s*usc",
+            lambda m: f"{round4(float(m.group(1)) / 100)}",
+            regex=True
+        )
+        # Handle existing USD values
+        d[col] = d[col].astype(str).str.replace(
+            r"(?i)([\d\.\-]+)\s*USD",
+            lambda m: f"{round4(float(m.group(1)))}",
             regex=True
         )
 

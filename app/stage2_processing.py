@@ -13,6 +13,28 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def safe_float(value, default=0.0):
+    """Safely convert a value to a float."""
+    if value is None:
+        return default
+    try:
+        # Remove currency symbols, commas, etc.
+        cleaned_value = re.sub(r'[^\d.-]', '', str(value))
+        if cleaned_value:
+            return float(cleaned_value)
+    except (ValueError, TypeError):
+        pass
+    return default
+
+def safe_str(value, default=''):
+    """Safely convert a value to a string."""
+    if value is None:
+        return default
+    try:
+        return str(value)
+    except (ValueError, TypeError):
+        return default
+
 def detect_separator(line):
     """Detect CSV separator based on character count"""
     tab_count = line.count('\t')
@@ -215,25 +237,25 @@ def process_payment_data(file_path, file_format='csv'):
                 # Create new payment record
                 payment = PaymentData(
                     user_id=current_user.id,
-                    confirmed=row_dict.get(column_map.get('confirmed', '')),
+                    confirmed=safe_str(row_dict.get(column_map.get('confirmed', ''))),
                     tx_id=tx_id,
-                    wallet_address=row_dict.get(column_map.get('wallet_address', '')),
+                    wallet_address=safe_str(row_dict.get(column_map.get('wallet_address', ''))),
                     status=status,
                     type=tx_type,
-                    payment_gateway=row_dict.get(column_map.get('payment_gateway', '')),
-                    final_amount=float(row_dict.get(column_map.get('final_amount', ''), 0) or 0),
-                    final_currency=row_dict.get(column_map.get('final_currency', '')),
-                    settlement_amount=float(row_dict.get(column_map.get('settlement_amount', ''), 0) or 0),
-                    settlement_currency=row_dict.get(column_map.get('settlement_currency', '')),
-                    processing_fee=float(row_dict.get(column_map.get('processing_fee', ''), 0) or 0),
-                    price=float(row_dict.get(column_map.get('price', ''), 1) or 1),
-                    comment=row_dict.get(column_map.get('comment', '')),
-                    payment_id=row_dict.get(column_map.get('payment_id', '')),
+                    payment_gateway=safe_str(row_dict.get(column_map.get('payment_gateway', ''))),
+                    final_amount=safe_float(row_dict.get(column_map.get('final_amount', ''))),
+                    final_currency=safe_str(row_dict.get(column_map.get('final_currency', ''))),
+                    settlement_amount=safe_float(row_dict.get(column_map.get('settlement_amount', ''))),
+                    settlement_currency=safe_str(row_dict.get(column_map.get('settlement_currency', ''))),
+                    processing_fee=safe_float(row_dict.get(column_map.get('processing_fee', ''))),
+                    price=safe_float(row_dict.get(column_map.get('price', '')), default=1.0),
+                    comment=safe_str(row_dict.get(column_map.get('comment', ''))),
+                    payment_id=safe_str(row_dict.get(column_map.get('payment_id', ''))),
                     created=parse_date_flexible(row_dict.get(column_map.get('created', ''))),
-                    trading_account=row_dict.get(column_map.get('trading_account', '')),
+                    trading_account=safe_str(row_dict.get(column_map.get('trading_account', ''))),
                     correct_coin_sent=True,
-                    balance_after=float(row_dict.get(column_map.get('balance_after', ''), 0) or 0),
-                    tier_fee=float(row_dict.get(column_map.get('tier_fee', ''), 0) or 0),
+                    balance_after=safe_float(row_dict.get(column_map.get('balance_after', ''))),
+                    tier_fee=safe_float(row_dict.get(column_map.get('tier_fee', ''))),
                     sheet_category=sheet_category
                 )
                 
@@ -308,14 +330,14 @@ def process_ib_rebate(file_path, file_format='csv'):
                     skipped_count += 1
                     continue
                 
-                rebate_value = float(row[rebate_idx] or 0) if rebate_idx is not None and rebate_idx < len(row) else 0
+                rebate_value = safe_float(row[rebate_idx]) if rebate_idx is not None and rebate_idx < len(row) else 0.0
                 rebate_time = parse_date_flexible(row[rebate_time_idx]) if rebate_time_idx is not None and rebate_time_idx < len(row) else None
                 
                 logger.info(f"Row {i+1}: rebate_value={rebate_value}, rebate_time={rebate_time}")
                 
                 rebate = IBRebate(
                     user_id=current_user.id,
-                    transaction_id=tx_id,
+                    transaction_id=safe_str(tx_id),
                     rebate=rebate_value,
                     rebate_time=rebate_time
                 )
@@ -397,20 +419,16 @@ def process_crm_withdrawals(file_path, file_format='csv'):
                     continue
                 
                 # Process withdrawal amount (handle USC conversion)
-                amount_val = str(row[amount_idx] or '').strip().upper()
-                if 'USD' in amount_val:
-                    amount = float(re.sub(r'[^0-9.-]', '', amount_val))
-                elif 'USC' in amount_val:
-                    raw_amount = float(re.sub(r'[^0-9.-]', '', amount_val))
-                    amount = raw_amount / 100 if not pd.isna(raw_amount) else 0
-                else:
-                    amount = float(re.sub(r'[^0-9.-]', '', amount_val)) if amount_val else 0
+                amount_val = safe_str(row[amount_idx]).upper()
+                amount = safe_float(amount_val)
+                if 'USC' in amount_val:
+                    amount /= 100
                 
                 withdrawal = CRMWithdrawals(
                     user_id=current_user.id,
-                    request_id=request_id,
+                    request_id=safe_str(request_id),
                     review_time=parse_date_flexible(row[req_time_idx]),
-                    trading_account=str(row[trading_account_idx] or '').strip(),
+                    trading_account=safe_str(row[trading_account_idx]),
                     withdrawal_amount=amount
                 )
                 
@@ -496,26 +514,20 @@ def process_crm_deposit(file_path, file_format='csv'):
                     continue
                 
                 # Process trading amount (handle USC conversion)
-                amount_val = str(row[amt_idx] or '').strip()
+                amount_val = safe_str(row[amt_idx]).upper()
+                amount = safe_float(amount_val)
                 if 'USC' in amount_val:
-                    parts = amount_val.split()
-                    if len(parts) > 1:
-                        number_part = re.sub(r'[^0-9.-]', '', parts[1])
-                        amount = float(number_part) / 100 if number_part else 0
-                    else:
-                        amount = 0
-                else:
-                    amount = float(re.sub(r'[^0-9.-]', '', amount_val)) if amount_val else 0
+                    amount /= 100
                 
                 deposit = CRMDeposit(
                     user_id=current_user.id,
-                    request_id=request_id,
+                    request_id=safe_str(request_id),
                     request_time=parse_date_flexible(row[req_idx]),
-                    trading_account=str(row[acc_idx] or '').strip(),
+                    trading_account=safe_str(row[acc_idx]),
                     trading_amount=amount,
-                    payment_method=str(row[pay_method_idx] or '').strip() if pay_method_idx is not None and pay_method_idx < len(row) else '',
-                    client_id=str(row[client_id_idx] or '').strip() if client_id_idx is not None and client_id_idx < len(row) else '',
-                    name=str(row[name_idx] or '').strip() if name_idx is not None and name_idx < len(row) else ''
+                    payment_method=safe_str(row[pay_method_idx]) if pay_method_idx is not None and pay_method_idx < len(row) else '',
+                    client_id=safe_str(row[client_id_idx]) if client_id_idx is not None and client_id_idx < len(row) else '',
+                    name=safe_str(row[name_idx]) if name_idx is not None and name_idx < len(row) else ''
                 )
                 
                 db.session.add(deposit)
@@ -586,9 +598,9 @@ def process_account_list(file_path, file_format='csv'):
                     skipped_count += 1
                     continue
                 
-                login = str(row[login_idx] or '').strip()
-                name = str(row[name_idx] or '').strip()
-                group = str(row[group_idx] or '').strip()
+                login = safe_str(row[login_idx])
+                name = safe_str(row[name_idx])
+                group = safe_str(row[group_idx])
                 
                 if not login:
                     logger.warning(f"Row {i+1}: Skipped - empty login")

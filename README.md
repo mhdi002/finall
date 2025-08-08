@@ -92,9 +92,19 @@ flask setup-demo-data
 This will create the `instance/app.db` SQLite file and all the necessary tables and users.
 
 ### 5. Run the Application
-Start the Flask development server:
+You can run the application in two ways:
+
+**A) Using the `flask` command (recommended for development):**
+This will start the development server, typically on port 5000.
 ```bash
 flask run
+```
+The application will be available at `http://127.0.0.1:5000`.
+
+**B) Running the Python script directly:**
+This will run the application on port 5001, as configured in `run.py`.
+```bash
+python run.py
 ```
 The application will be available at `http://127.0.0.1:5001`.
 

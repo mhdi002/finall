@@ -10,9 +10,9 @@ class TestEndToEndProcessing(unittest.TestCase):
         Test the entire report processing pipeline with the provided CSV file.
         """
         # Define file paths
-        deals_path = 'All_Pages_Deals_MT5 (1).csv'
-        excluded_path = 'tests/data/excluded.csv'
-        vip_path = 'tests/data/vip.csv'
+        deals_path = 'test_data/sample_deals.csv'
+        excluded_path = 'test_data/excluded.csv'
+        vip_path = 'test_data/vip.csv'
 
         # Check if the main deals file exists
         self.assertTrue(os.path.exists(deals_path), f"Deals file not found at {deals_path}")

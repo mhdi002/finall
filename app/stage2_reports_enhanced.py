@@ -6,6 +6,13 @@ from flask_login import current_user
 import traceback
 import re
 
+def _safe_float(value, default=0.0):
+    """Safely convert a value to a float."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
 def filter_by_date_range(query, start_date, end_date, date_column):
     """Apply date range filter to query"""
     if start_date and end_date:
@@ -206,7 +213,7 @@ def compare_crm_and_client_deposits(start_date=None, end_date=None):
     crm_normalized = [
         {
             'date': d.request_time, 'client_id': (d.client_id or '').strip().lower(),
-            'name': d.name or '', 'amount': float(d.trading_amount or 0),
+            'name': d.name or '', 'amount': _safe_float(d.trading_amount),
             'payment_method': (d.payment_method or '').strip().lower(),
             'source': 'CRM Deposit', 'id': d.id
         } for d in crm_deposits
@@ -215,7 +222,7 @@ def compare_crm_and_client_deposits(start_date=None, end_date=None):
     client_normalized = [
         {
             'date': d.created, 'account': (d.trading_account or '').strip().lower(),
-            'amount': float(d.final_amount or 0), 'source': 'M2p Deposit', 'id': d.id
+            'amount': _safe_float(d.final_amount), 'source': 'M2p Deposit', 'id': d.id
         } for d in client_deposits
     ]
     

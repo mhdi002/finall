@@ -116,46 +116,89 @@ def reset_demo_user():
 
 @app.cli.command("setup-demo-data")
 def setup_demo_data():
-    """Sets up test data for the demo user."""
+    """Sets up comprehensive test data for the demo user."""
     from datetime import datetime, timedelta
+    from app.models import PaymentData, IBRebate, CRMWithdrawals, CRMDeposit, AccountList
 
-    # Get demo user
     demo_user = User.query.filter_by(username='demo').first()
     if not demo_user:
         print("Demo user not found. Please run 'flask create-demo-user' first.")
         return
 
-    print(f"Found demo user: {demo_user.username}")
+    print(f"Found demo user: {demo_user.username}. Clearing old data...")
 
-    # Clear existing data
+    # Clear existing data for the demo user
     PaymentData.query.filter_by(user_id=demo_user.id).delete()
     IBRebate.query.filter_by(user_id=demo_user.id).delete()
     CRMWithdrawals.query.filter_by(user_id=demo_user.id).delete()
     CRMDeposit.query.filter_by(user_id=demo_user.id).delete()
     AccountList.query.filter_by(user_id=demo_user.id).delete()
+    db.session.commit()
 
-    now = datetime.now()
+    now = datetime.utcnow()
+    print("Generating new demo data...")
 
-    payment_data = [
-        ('M2P_DEP_001', 'M2p Deposit', 'DEPOSIT', 500.25, 25.50), ('M2P_DEP_002', 'M2p Deposit', 'DEPOSIT', 750.00, 35.75),
-        ('SET_DEP_001', 'Settlement Deposit', 'DEPOSIT', 1500.00, 75.00), ('M2P_WITH_001', 'M2p Withdraw', 'WITHDRAW', 300.00, 15.00)
+    # 1. Account List
+    accounts = [
+        {'login': '1001', 'name': 'John Doe', 'group': 'REAL\\Standard', 'is_welcome_bonus': False},
+        {'login': '1002', 'name': 'Jane Smith', 'group': 'WELCOME\\Welcome BBOOK', 'is_welcome_bonus': True},
+        {'login': '1003', 'name': 'Peter Jones', 'group': 'REAL\\ECN', 'is_welcome_bonus': False}
     ]
-    for i, (tx_id, category, tx_type, amount, fee) in enumerate(payment_data):
-        payment = PaymentData(user_id=demo_user.id, tx_id=tx_id, status='DONE', type=tx_type, sheet_category=category, final_amount=amount, tier_fee=fee, created=now - timedelta(days=i))
+    for acc_data in accounts:
+        account = AccountList(user_id=demo_user.id, **acc_data)
+        db.session.add(account)
+    print(f"- Created {len(accounts)} accounts")
+
+    # 2. CRM Deposits (to test discrepancies)
+    crm_deposits = [
+        # This one will match a payment data record
+        {'request_id': 'CRM_DEP_001', 'trading_amount': 500.00, 'payment_method': 'CARD', 'client_id': 'C1001', 'name': 'John Doe', 'request_time': now - timedelta(hours=1), 'trading_account': 'TA-1001'},
+        # This one will NOT match (TopChange is ignored in discrepancy report)
+        {'request_id': 'CRM_DEP_002', 'trading_amount': 1250.75, 'payment_method': 'TOPCHANGE', 'client_id': 'C1003', 'name': 'Peter Jones', 'request_time': now - timedelta(days=1), 'trading_account': 'TA-1003'},
+        # This one will be a discrepancy
+        {'request_id': 'CRM_DEP_003', 'trading_amount': 300.00, 'payment_method': 'WIRE', 'client_id': 'C1004', 'name': 'Missing Payment', 'request_time': now - timedelta(days=2), 'trading_account': 'TA-1004'}
+    ]
+    for dep_data in crm_deposits:
+        deposit = CRMDeposit(user_id=demo_user.id, **dep_data)
+        db.session.add(deposit)
+    print(f"- Created {len(crm_deposits)} CRM deposits")
+
+    # 3. Payment Data (to test discrepancies)
+    payment_entries = [
+        # This one will match CRM_DEP_001
+        {'tx_id': 'M2P_DEP_001', 'sheet_category': 'M2p Deposit', 'type': 'DEPOSIT', 'final_amount': 500.25, 'tier_fee': 25.50, 'created': now - timedelta(hours=1, minutes=5), 'trading_account': 'Client C1001 in account TA-1001'},
+        # This one will be a discrepancy
+        {'tx_id': 'M2P_DEP_002', 'sheet_category': 'M2p Deposit', 'type': 'DEPOSIT', 'final_amount': 750.00, 'tier_fee': 35.75, 'created': now - timedelta(days=3), 'trading_account': 'Client C1005 in account TA-1005'},
+        # Other types of payments
+        {'tx_id': 'SET_DEP_001', 'sheet_category': 'Settlement Deposit', 'type': 'DEPOSIT', 'final_amount': 1500.00, 'tier_fee': 75.00, 'created': now - timedelta(days=4)},
+        {'tx_id': 'M2P_WITH_001', 'sheet_category': 'M2p Withdraw', 'type': 'WITHDRAW', 'final_amount': 300.00, 'tier_fee': 15.00, 'created': now - timedelta(days=5)}
+    ]
+    for p_data in payment_entries:
+        payment = PaymentData(user_id=demo_user.id, status='DONE', **p_data)
         db.session.add(payment)
+    print(f"- Created {len(payment_entries)} payment data records")
 
-    rebate_data = [125.50, 89.75]
+    # 4. CRM Withdrawals (including one from a Welcome Bonus account)
+    crm_withdrawals = [
+        # Regular withdrawal
+        {'request_id': 'CRM_WITH_001', 'withdrawal_amount': 100.00, 'review_time': now - timedelta(days=6), 'trading_account': '1001'},
+        # Welcome bonus withdrawal
+        {'request_id': 'CRM_WITH_002', 'withdrawal_amount': 50.00, 'review_time': now - timedelta(days=7), 'trading_account': '1002'}
+    ]
+    for w_data in crm_withdrawals:
+        withdrawal = CRMWithdrawals(user_id=demo_user.id, **w_data)
+        db.session.add(withdrawal)
+    print(f"- Created {len(crm_withdrawals)} CRM withdrawals")
+
+    # 5. IB Rebates
+    rebate_data = [125.50, 89.75, 210.20]
     for i, rebate_amount in enumerate(rebate_data):
-        rebate = IBRebate(user_id=demo_user.id, transaction_id=f'REBATE_{i+1:03d}', rebate=rebate_amount, rebate_time=now - timedelta(days=i))
+        rebate = IBRebate(user_id=demo_user.id, transaction_id=f'REBATE_{i+1:03d}', rebate=rebate_amount, rebate_time=now - timedelta(days=i+8))
         db.session.add(rebate)
-
-    crm_deposit_data = [(850.00, 'CARD'), (1250.75, 'TOPCHANGE')]
-    for i, (amount, method) in enumerate(crm_deposit_data):
-        crm_deposit = CRMDeposit(user_id=demo_user.id, request_id=f'CRM_DEP_{i+1:03d}', trading_amount=amount, payment_method=method, client_id=f'CLIENT_{i+1000}', name=f'Client Name {i+1}', request_time=now - timedelta(days=i))
-        db.session.add(crm_deposit)
+    print(f"- Created {len(rebate_data)} IB rebates")
 
     db.session.commit()
-    print("Demo data created successfully.")
+    print("\nComprehensive demo data created successfully!")
 
 if __name__ == '__main__':
     # When running with a production WSGI server like Gunicorn,
