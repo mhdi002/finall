@@ -1,9 +1,10 @@
 import pandas as pd
 from datetime import datetime
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from app.models import PaymentData, IBRebate, CRMWithdrawals, CRMDeposit, AccountList
 from flask_login import current_user
 import traceback
+import re
 
 def filter_by_date_range(query, start_date, end_date, date_column):
     """Apply date range filter to query"""
@@ -11,17 +12,54 @@ def filter_by_date_range(query, start_date, end_date, date_column):
         return query.filter(and_(date_column >= start_date, date_column <= end_date))
     return query
 
-def sum_column_from_query(query, column_name):
-    """Sum a column from a query result"""
-    try:
-        total = 0
-        for record in query:
-            value = getattr(record, column_name, 0)
-            if value:
-                total += float(value)
-        return total
-    except:
-        return 0
+def _calculate_metrics(start_date=None, end_date=None):
+    """Helper function to calculate all report metrics efficiently."""
+
+    # Base queries
+    payment_query = PaymentData.query.filter_by(user_id=current_user.id)
+    rebate_query = IBRebate.query.filter_by(user_id=current_user.id)
+    crm_withdraw_query = CRMWithdrawals.query.filter_by(user_id=current_user.id)
+    crm_deposit_query = CRMDeposit.query.filter_by(user_id=current_user.id)
+
+    # Apply date filters
+    if start_date and end_date:
+        payment_query = filter_by_date_range(payment_query, start_date, end_date, PaymentData.created)
+        rebate_query = filter_by_date_range(rebate_query, start_date, end_date, IBRebate.rebate_time)
+        crm_withdraw_query = filter_by_date_range(crm_withdraw_query, start_date, end_date, CRMWithdrawals.review_time)
+        crm_deposit_query = filter_by_date_range(crm_deposit_query, start_date, end_date, CRMDeposit.request_time)
+
+    # Efficiently calculate sums using the database
+    def get_sum(query, column):
+        return query.with_entities(func.sum(column)).scalar() or 0
+
+    calculations = {
+        'Total Rebate': get_sum(rebate_query, IBRebate.rebate),
+        'M2p Deposit': get_sum(payment_query.filter_by(sheet_category='M2p Deposit'), PaymentData.final_amount),
+        'Settlement Deposit': get_sum(payment_query.filter_by(sheet_category='Settlement Deposit'), PaymentData.final_amount),
+        'M2p Withdrawal': get_sum(payment_query.filter_by(sheet_category='M2p Withdraw'), PaymentData.final_amount),
+        'Settlement Withdrawal': get_sum(payment_query.filter_by(sheet_category='Settlement Withdraw'), PaymentData.final_amount),
+        'CRM Deposit Total': get_sum(crm_deposit_query, CRMDeposit.trading_amount),
+        'CRM Withdraw Total': get_sum(crm_withdraw_query, CRMWithdrawals.withdrawal_amount),
+        'Tier Fee Deposit': (get_sum(payment_query.filter(PaymentData.sheet_category.ilike('%Deposit%')), PaymentData.tier_fee)),
+        'Tier Fee Withdraw': (get_sum(payment_query.filter(PaymentData.sheet_category.ilike('%Withdraw%')), PaymentData.tier_fee)),
+        'Topchange Deposit Total': get_sum(crm_deposit_query.filter(CRMDeposit.payment_method.ilike('TOPCHANGE')), CRMDeposit.trading_amount),
+    }
+
+    # Welcome bonus calculation still requires some Python logic
+    welcome_logins = db.session.query(AccountList.login).filter_by(user_id=current_user.id, is_welcome_bonus=True).all()
+    welcome_logins = [login[0] for login in welcome_logins]
+
+    welcome_bonus_withdrawals = 0
+    if welcome_logins:
+        # This part is still tricky to do in pure SQL with the current schema
+        withdrawals = crm_withdraw_query.all()
+        for w in withdrawals:
+            match = re.search(r'\d+', str(w.trading_account or ''))
+            if match and match.group(0) in welcome_logins:
+                welcome_bonus_withdrawals += w.withdrawal_amount or 0
+    calculations['Welcome Bonus Withdrawals'] = welcome_bonus_withdrawals
+
+    return calculations
 
 def check_data_sufficiency_for_charts(start_date=None, end_date=None):
     """
@@ -80,116 +118,13 @@ def check_data_sufficiency_for_charts(start_date=None, end_date=None):
         }
     }
 
-def calculate_topchange_deposit_total(start_date=None, end_date=None):
-    """Calculate Topchange deposit total from CRM deposits"""
-    query = CRMDeposit.query.filter_by(user_id=current_user.id)
-    
-    if start_date and end_date:
-        query = filter_by_date_range(query, start_date, end_date, CRMDeposit.request_time)
-    
-    topchange_total = 0
-    for deposit in query.all():
-        payment_method = (deposit.payment_method or '').strip().upper()
-        if payment_method == 'TOPCHANGE':
-            topchange_total += float(deposit.trading_amount or 0)
-    
-    return topchange_total
-
-def calculate_welcome_bonus_withdrawals(start_date=None, end_date=None):
-    """Calculate Welcome Bonus withdrawals"""
-    # Get welcome bonus accounts
-    welcome_accounts = AccountList.query.filter_by(
-        user_id=current_user.id, 
-        is_welcome_bonus=True
-    ).all()
-    
-    welcome_logins = [acc.login for acc in welcome_accounts]
-    
-    if not welcome_logins:
-        return 0
-    
-    # Get withdrawals
-    crm_withdraw_query = CRMWithdrawals.query.filter_by(user_id=current_user.id)
-    
-    if start_date and end_date:
-        crm_withdraw_query = filter_by_date_range(crm_withdraw_query, start_date, end_date, CRMWithdrawals.review_time)
-    
-    welcome_withdraw_sum = 0
-    for withdrawal in crm_withdraw_query.all():
-        # Extract login number from trading account
-        trading_account = str(withdrawal.trading_account or '')
-        login_match = None
-        import re
-        match = re.search(r'\d+', trading_account)
-        if match:
-            login_match = match.group()
-        
-        if login_match and login_match in welcome_logins:
-            welcome_withdraw_sum += float(withdrawal.withdrawal_amount or 0)
-    
-    return welcome_withdraw_sum
-
 def generate_formatted_final_report(start_date=None, end_date=None):
     """
     Generate final report similar to the Google Apps Script version
     This is shown when data is insufficient for charts
     """
+    calculations = _calculate_metrics(start_date, end_date)
     
-    # Base queries for current user
-    payment_query = PaymentData.query.filter_by(user_id=current_user.id)
-    rebate_query = IBRebate.query.filter_by(user_id=current_user.id)
-    crm_withdraw_query = CRMWithdrawals.query.filter_by(user_id=current_user.id)
-    crm_deposit_query = CRMDeposit.query.filter_by(user_id=current_user.id)
-    
-    # Apply date filters if provided
-    if start_date and end_date:
-        payment_query = filter_by_date_range(payment_query, start_date, end_date, PaymentData.created)
-        rebate_query = filter_by_date_range(rebate_query, start_date, end_date, IBRebate.rebate_time)
-        crm_withdraw_query = filter_by_date_range(crm_withdraw_query, start_date, end_date, CRMWithdrawals.review_time)
-        crm_deposit_query = filter_by_date_range(crm_deposit_query, start_date, end_date, CRMDeposit.request_time)
-    
-    # Calculate all metrics (similar to Google Apps Script)
-    calculations = {}
-    
-    # 1. Total Rebate
-    calculations['Total Rebate'] = sum_column_from_query(rebate_query.all(), 'rebate')
-    
-    # 2. Deposits by category
-    m2p_deposits = payment_query.filter_by(sheet_category='M2p Deposit').all()
-    settlement_deposits = payment_query.filter_by(sheet_category='Settlement Deposit').all()
-    
-    calculations['M2p Deposit'] = sum_column_from_query(m2p_deposits, 'final_amount')
-    calculations['Settlement Deposit'] = sum_column_from_query(settlement_deposits, 'final_amount')
-    
-    # 3. Withdrawals by category
-    m2p_withdraws = payment_query.filter_by(sheet_category='M2p Withdraw').all()
-    settlement_withdraws = payment_query.filter_by(sheet_category='Settlement Withdraw').all()
-    
-    calculations['M2p Withdrawal'] = sum_column_from_query(m2p_withdraws, 'final_amount')
-    calculations['Settlement Withdrawal'] = sum_column_from_query(settlement_withdraws, 'final_amount')
-    
-    # 4. CRM Deposit Total
-    calculations['CRM Deposit Total'] = sum_column_from_query(crm_deposit_query.all(), 'trading_amount')
-    
-    # 5. Topchange Deposit Total
-    calculations['Topchange Deposit Total'] = calculate_topchange_deposit_total(start_date, end_date)
-    
-    # 6. Tier Fees
-    tier_fee_deposit = (sum_column_from_query(m2p_deposits, 'tier_fee') + 
-                       sum_column_from_query(settlement_deposits, 'tier_fee'))
-    tier_fee_withdraw = (sum_column_from_query(m2p_withdraws, 'tier_fee') + 
-                        sum_column_from_query(settlement_withdraws, 'tier_fee'))
-    
-    calculations['Tier Fee Deposit'] = tier_fee_deposit
-    calculations['Tier Fee Withdraw'] = tier_fee_withdraw
-    
-    # 7. Welcome Bonus Withdrawals
-    calculations['Welcome Bonus Withdrawals'] = calculate_welcome_bonus_withdrawals(start_date, end_date)
-    
-    # 8. CRM Withdraw Total
-    calculations['CRM Withdraw Total'] = sum_column_from_query(crm_withdraw_query.all(), 'withdrawal_amount')
-    
-    # Format as ordered list for consistent display (matching Google Apps Script order)
     metrics_order = [
         'Total Rebate',
         'M2p Deposit',
@@ -204,16 +139,14 @@ def generate_formatted_final_report(start_date=None, end_date=None):
         'CRM Withdraw Total'
     ]
     
-    # Create formatted report data
     report_data = []
     date_range_str = ''
     
     if start_date and end_date:
         date_range_str = f"Filtered from {start_date.strftime('%d.%m.%Y')} to {end_date.strftime('%d.%m.%Y')}"
         report_data.append(['Date Range', date_range_str])
-        report_data.append(['', ''])  # Empty row for spacing
+        report_data.append(['', ''])
     
-    # Add metrics in specified order
     for metric in metrics_order:
         value = calculations.get(metric, 0)
         report_data.append([metric, f"{value:.2f}"])
@@ -222,82 +155,13 @@ def generate_formatted_final_report(start_date=None, end_date=None):
         'report_data': report_data,
         'calculations': calculations,
         'date_range': date_range_str,
-        'formatted_table': True  # Flag to indicate this is the table format
+        'formatted_table': True
     }
-
-def generate_final_report(start_date=None, end_date=None):
-    """
-    Enhanced version of the original generate_final_report that checks data sufficiency
-    """
-    
-    # Check if data is sufficient for charts
-    data_check = check_data_sufficiency_for_charts(start_date, end_date)
-    
-    if data_check['sufficient_for_charts']:
-        # Use original logic for charts
-        return generate_original_final_report(start_date, end_date)
-    else:
-        # Use formatted table version
-        return generate_formatted_final_report(start_date, end_date)
 
 def generate_original_final_report(start_date=None, end_date=None):
     """Original final report generation for cases with sufficient data"""
+    calculations = _calculate_metrics(start_date, end_date)
     
-    # Base queries for current user
-    payment_query = PaymentData.query.filter_by(user_id=current_user.id)
-    rebate_query = IBRebate.query.filter_by(user_id=current_user.id)
-    crm_withdraw_query = CRMWithdrawals.query.filter_by(user_id=current_user.id)
-    crm_deposit_query = CRMDeposit.query.filter_by(user_id=current_user.id)
-    
-    # Apply date filters if provided
-    if start_date and end_date:
-        payment_query = filter_by_date_range(payment_query, start_date, end_date, PaymentData.created)
-        rebate_query = filter_by_date_range(rebate_query, start_date, end_date, IBRebate.rebate_time)
-        crm_withdraw_query = filter_by_date_range(crm_withdraw_query, start_date, end_date, CRMWithdrawals.review_time)
-        crm_deposit_query = filter_by_date_range(crm_deposit_query, start_date, end_date, CRMDeposit.request_time)
-    
-    # Calculate totals
-    calculations = {}
-    
-    # 1. Total Rebate
-    calculations['Total Rebate'] = sum_column_from_query(rebate_query.all(), 'rebate')
-    
-    # 2. Deposits by category
-    m2p_deposits = payment_query.filter_by(sheet_category='M2p Deposit').all()
-    settlement_deposits = payment_query.filter_by(sheet_category='Settlement Deposit').all()
-    
-    calculations['M2p Deposit'] = sum_column_from_query(m2p_deposits, 'final_amount')
-    calculations['Settlement Deposit'] = sum_column_from_query(settlement_deposits, 'final_amount')
-    
-    # 3. Withdrawals by category
-    m2p_withdraws = payment_query.filter_by(sheet_category='M2p Withdraw').all()
-    settlement_withdraws = payment_query.filter_by(sheet_category='Settlement Withdraw').all()
-    
-    calculations['M2p Withdrawal'] = sum_column_from_query(m2p_withdraws, 'final_amount')
-    calculations['Settlement Withdrawal'] = sum_column_from_query(settlement_withdraws, 'final_amount')
-    
-    # 4. CRM Deposit Total
-    calculations['CRM Deposit Total'] = sum_column_from_query(crm_deposit_query.all(), 'trading_amount')
-    
-    # 5. Tier Fees
-    tier_fee_deposit = (sum_column_from_query(m2p_deposits, 'tier_fee') + 
-                       sum_column_from_query(settlement_deposits, 'tier_fee'))
-    tier_fee_withdraw = (sum_column_from_query(m2p_withdraws, 'tier_fee') + 
-                        sum_column_from_query(settlement_withdraws, 'tier_fee'))
-    
-    calculations['Tier Fee Deposit'] = tier_fee_deposit
-    calculations['Tier Fee Withdraw'] = tier_fee_withdraw
-    
-    # 6. Welcome Bonus Withdrawals
-    calculations['Welcome Bonus Withdrawals'] = calculate_welcome_bonus_withdrawals(start_date, end_date)
-    
-    # 7. CRM TopChange Total
-    calculations['CRM TopChange Total'] = calculate_topchange_deposit_total(start_date, end_date)
-    
-    # 8. CRM Withdraw Total
-    calculations['CRM Withdraw Total'] = sum_column_from_query(crm_withdraw_query.all(), 'withdrawal_amount')
-    
-    # Format as list of tuples for display
     report_data = []
     date_range_str = ''
     if start_date and end_date:
@@ -312,17 +176,26 @@ def generate_original_final_report(start_date=None, end_date=None):
         'report_data': report_data,
         'calculations': calculations,
         'date_range': date_range_str,
-        'formatted_table': False  # Flag to indicate this uses charts
+        'formatted_table': False
     }
+
+def generate_final_report(start_date=None, end_date=None):
+    """
+    Enhanced version of the original generate_final_report that checks data sufficiency
+    """
+    data_check = check_data_sufficiency_for_charts(start_date, end_date)
+
+    if data_check['sufficient_for_charts']:
+        return generate_original_final_report(start_date, end_date)
+    else:
+        return generate_formatted_final_report(start_date, end_date)
 
 def compare_crm_and_client_deposits(start_date=None, end_date=None):
     """Compare CRM deposits with client payment deposits to find discrepancies"""
     
-    # Get CRM deposits
     crm_query = CRMDeposit.query.filter_by(user_id=current_user.id)
     client_query = PaymentData.query.filter_by(user_id=current_user.id, sheet_category='M2p Deposit')
     
-    # Apply date filters
     if start_date and end_date:
         crm_query = filter_by_date_range(crm_query, start_date, end_date, CRMDeposit.request_time)
         client_query = filter_by_date_range(client_query, start_date, end_date, PaymentData.created)
@@ -330,79 +203,53 @@ def compare_crm_and_client_deposits(start_date=None, end_date=None):
     crm_deposits = crm_query.all()
     client_deposits = client_query.all()
     
-    # Normalize data for comparison
-    crm_normalized = []
-    for deposit in crm_deposits:
-        crm_normalized.append({
-            'date': deposit.request_time,
-            'client_id': (deposit.client_id or '').strip().lower(),
-            'name': deposit.name or '',
-            'amount': float(deposit.trading_amount or 0),
-            'payment_method': (deposit.payment_method or '').strip().lower(),
-            'source': 'CRM Deposit',
-            'id': deposit.id
-        })
+    crm_normalized = [
+        {
+            'date': d.request_time, 'client_id': (d.client_id or '').strip().lower(),
+            'name': d.name or '', 'amount': float(d.trading_amount or 0),
+            'payment_method': (d.payment_method or '').strip().lower(),
+            'source': 'CRM Deposit', 'id': d.id
+        } for d in crm_deposits
+    ]
     
-    client_normalized = []
-    for deposit in client_deposits:
-        client_normalized.append({
-            'date': deposit.created,
-            'account': (deposit.trading_account or '').strip().lower(),
-            'amount': float(deposit.final_amount or 0),
-            'source': 'M2p Deposit',
-            'id': deposit.id
-        })
+    client_normalized = [
+        {
+            'date': d.created, 'account': (d.trading_account or '').strip().lower(),
+            'amount': float(d.final_amount or 0), 'source': 'M2p Deposit', 'id': d.id
+        } for d in client_deposits
+    ]
     
-    # Find matches and discrepancies
     matched = set()
     unmatched = []
     
-    # Compare CRM with Client deposits
     for crm_row in crm_normalized:
         match_found = False
         for client_row in client_normalized:
             if client_row['id'] in matched:
                 continue
             
-            # Check if dates are within 3.5 hours of each other
             if crm_row['date'] and client_row['date']:
                 time_diff = abs((crm_row['date'] - client_row['date']).total_seconds())
-                if time_diff <= 3.5 * 3600:  # 3.5 hours
-                    # Check if client ID is in trading account
-                    if crm_row['client_id'] in client_row['account']:
-                        # Check if amounts are similar (within $1)
-                        if abs(crm_row['amount'] - client_row['amount']) <= 1:
-                            matched.add(client_row['id'])
-                            match_found = True
-                            break
+                if time_diff <= 3.5 * 3600 and \
+                   crm_row['client_id'] in client_row['account'] and \
+                   abs(crm_row['amount'] - client_row['amount']) <= 1:
+                    matched.add(client_row['id'])
+                    match_found = True
+                    break
         
-        # If no match found and not TopChange, add to unmatched
         if not match_found and crm_row['payment_method'] != 'topchange':
             unmatched.append([
-                crm_row['source'],
-                crm_row['date'].strftime('%Y-%m-%d') if crm_row['date'] else '',
-                crm_row['client_id'],
-                '',
-                f"{crm_row['amount']:.2f}",
-                crm_row['name'],
-                'N',  # Confirmed status
-                crm_row['id']
+                crm_row['source'], crm_row['date'].strftime('%Y-%m-%d') if crm_row['date'] else '',
+                crm_row['client_id'], '', f"{crm_row['amount']:.2f}", crm_row['name'], 'N', crm_row['id']
             ])
-    
-    # Add unmatched client deposits
+
     for client_row in client_normalized:
         if client_row['id'] not in matched:
             unmatched.append([
-                client_row['source'],
-                client_row['date'].strftime('%Y-%m-%d') if client_row['date'] else '',
-                '',  # Client ID
-                client_row['account'],
-                f"{client_row['amount']:.2f}",
-                '',  # Client Name
-                'N',  # Confirmed status
-                client_row['id']
+                client_row['source'], client_row['date'].strftime('%Y-%m-%d') if client_row['date'] else '',
+                '', client_row['account'], f"{client_row['amount']:.2f}", '', 'N', client_row['id']
             ])
-    
+
     headers = ['Source', 'Date', 'Client ID', 'Trading Account', 'Amount', 'Client Name', 'Confirmed (Y/N)', 'ID']
     
     return {
@@ -425,12 +272,11 @@ def get_summary_data_for_charts(start_date=None, end_date=None):
     data_check = check_data_sufficiency_for_charts(start_date, end_date)
     
     if not data_check['sufficient_for_charts']:
-        return None  # Don't generate chart data if insufficient
+        return None
     
     report = generate_original_final_report(start_date, end_date)
     calculations = report['calculations']
     
-    # Volume data
     volumes = {
         'M2p Deposit': calculations.get('M2p Deposit', 0),
         'Settlement Deposit': calculations.get('Settlement Deposit', 0),
@@ -440,7 +286,6 @@ def get_summary_data_for_charts(start_date=None, end_date=None):
         'CRM Withdrawal': calculations.get('CRM Withdraw Total', 0)
     }
     
-    # Fee data
     fees = {
         'Tier Fee Deposit': calculations.get('Tier Fee Deposit', 0),
         'Tier Fee Withdraw': calculations.get('Tier Fee Withdraw', 0),

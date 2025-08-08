@@ -286,6 +286,28 @@ def generate_stage2_report():
     # If form fails validation or an exception occurs, redirect to dashboard
     return redirect(url_for('main.dashboard'))
 
+@bp.route('/report/discrepancies', methods=['POST'])
+@login_required
+def discrepancy_report():
+    form = DateRangeForm()
+    if form.validate_on_submit():
+        try:
+            start_date = form.start_date.data
+            end_date = form.end_date.data
+
+            discrepancy_data = compare_crm_and_client_deposits(start_date, end_date)
+
+            return render_template('discrepancies.html',
+                                     title='Discrepancy Report',
+                                     discrepancies=discrepancy_data['discrepancies'],
+                                     headers=discrepancy_data['headers'],
+                                     start_date=start_date,
+                                     end_date=end_date)
+        except Exception as e:
+            flash(f'Error generating discrepancy report: {e}', 'danger')
+
+    return redirect(url_for('main.dashboard'))
+
 @bp.route('/api/upload_status')
 @login_required
 def upload_status():

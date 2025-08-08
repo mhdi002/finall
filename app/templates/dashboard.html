@@ -54,8 +54,9 @@
                                 {{ form.end_date(class="form-control", type="datetime-local") }}
                             </div>
                         </div>
-                        <div class="d-grid">
-                            {{ form.submit(class="btn btn-success", value="Generate Stage 2 Report") }}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-chart-bar me-2"></i>Generate Summary Report</button>
+                            <button type="submit" formaction="{{ url_for('main.discrepancy_report') }}" class="btn btn-warning"><i class="fas fa-search-dollar me-2"></i>Run Discrepancy Report</button>
                         </div>
                     </form>
                 </div>
