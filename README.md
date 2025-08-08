@@ -1,6 +1,5 @@
 # Financial Report Web Application
 
-
 [![Python application](https://github.com/mhdi002/111/actions/workflows/main.yml/badge.svg)](https://github.com/mhdi002/111/actions/workflows/main.yml)
 
 This is a comprehensive web application for processing, analyzing, and visualizing financial deal data, built with Flask and containerized with Docker.
@@ -9,9 +8,9 @@ This is a comprehensive web application for processing, analyzing, and visualizi
 
 - **Secure Authentication**: Robust user registration and login system with strong password requirements.
 - **Role-Based Access Control**: Three user roles (Viewer, Admin, Owner) with distinct permissions.
-- **File Uploads**: Securely upload CSV files for deals, excluded accounts, and VIP clients.
-- **Advanced Data Processing**: A powerful backend that processes the data, splits it into A/B/Multi books, and performs complex financial calculations, based on the logic from the original `report.py` script.
-- **Stage 2 - Advanced Reporting**: A feature for uploading and processing various financial reports (CSV/XLSX), which are then stored in the database. The application can then generate reports and perform analysis on this data, including discrepancy checks.
+- **File Uploads**: Securely upload CSV and XLSX files for deals, financial reports, and client lists.
+- **Advanced Data Processing**: A powerful backend that processes financial data, splits it into A/B/Multi books, and performs complex financial calculations.
+- **Stage 2 - Advanced Reporting**: A feature for processing various financial reports, which are then stored in the database. The application can then generate reports and perform analysis on this data, including discrepancy checks.
 - **Interactive Dashboard**: A clean, tabbed interface for viewing results, including summary tables and dynamic charts generated with Plotly.
 - **Audit Logging**: All key user actions (logins, uploads, etc.) are logged and can be viewed by the site Owner in an admin panel.
 - **Containerized Deployment**: A complete Dockerfile allows for easy, consistent deployment on any machine.
@@ -28,7 +27,7 @@ This is a comprehensive web application for processing, analyzing, and visualizi
 │   ├── forms.py          # WTForms classes
 │   ├── processing.py     # Core data processing logic
 │   ├── stage2_processing.py # Stage 2 data processing
-│   ├── stage2_reports.py # Stage 2 reporting logic
+│   ├── stage2_reports_enhanced.py # Stage 2 reporting logic
 │   ├── logger.py         # Audit logging helper
 │   ├── charts.py         # Chart generation logic
 │   ├── static/           # Static files (CSS, JS)
@@ -41,7 +40,7 @@ This is a comprehensive web application for processing, analyzing, and visualizi
 ├── config.py             # Application configuration
 ├── run.py                # Application entry point
 ├── requirements.txt      # Python dependencies
-├── Dockerfile.txt        # Docker container definition
+├── Dockerfile            # Docker container definition
 └── README.md             # This file
 ```
 
@@ -69,28 +68,43 @@ pip install -r requirements.txt
 ### 3. Set up Environment Variables
 The application uses a `.flaskenv` file to manage environment variables for development. This file is already included in the repository. It sets `FLASK_APP` and `FLASK_ENV`.
 
-### 4. Initialize the Database
-The first time you set up the project, you need to initialize the database and apply the migrations:
+### 4. Initialize the Database and Users
+The first time you set up the project, you need to initialize the database and create the necessary user roles and users. Use the following Flask CLI commands:
 ```bash
-# Make sure your FLASK_APP is set (done by the .flaskenv file)
+# Set the FLASK_APP environment variable if you are not using a .flaskenv file
+export FLASK_APP=run.py
+
+# Initialize the database and apply migrations
 flask db upgrade
+
+# Set up the initial user roles (Viewer, Admin, Owner)
+flask setup-roles
+
+# Create an owner user
+flask create-owner
+
+# Create a demo user for testing
+flask create-demo-user
+
+# (Optional) Populate the database with test data for the demo user
+flask setup-demo-data
 ```
-This will create the `instance/app.db` SQLite file and all the necessary tables (users, roles, logs).
+This will create the `instance/app.db` SQLite file and all the necessary tables and users.
 
 ### 5. Run the Application
 Start the Flask development server:
 ```bash
 flask run
 ```
-The application will be available at `http://127.0.0.1:5000`. The `setup_initial_roles` function in `run.py` will automatically populate the 'Viewer', 'Admin', and 'Owner' roles on the first run.
+The application will be available at `http://127.0.0.1:5001`.
 
 ---
 
 ## Running the Tests
 
-To run the comprehensive test suite:
+To run the comprehensive test suite, use `pytest`:
 ```bash
-python -m unittest discover tests
+pytest
 ```
 
 ---
@@ -120,15 +134,15 @@ SQLALCHEMY_DATABASE_URI=sqlite:///instance/app.db
 **Note:** For a real production environment, you should use a more robust database like PostgreSQL or MySQL and set the `SQLALCHEMY_DATABASE_URI` accordingly.
 
 ### 3. Build and Run the Docker Container
-The provided `Dockerfile.txt` is configured to use Gunicorn as the production WSGI server. Build and run the container in detached mode:
+The provided `Dockerfile` is configured to use Gunicorn as the production WSGI server. Build and run the container in detached mode:
 
 ```bash
 # Build the Docker image
-sudo docker build -f Dockerfile.txt -t report-app .
+sudo docker build -t report-app .
 
 # Run the container
 sudo docker run -d \
-  -p 80:5000 \
+  -p 80:5001 \
   --name report-app-container \
   -v $(pwd)/instance:/app/instance \
   --env-file .env \
@@ -137,16 +151,18 @@ sudo docker run -d \
 
 **Explanation of the `docker run` command:**
 - `-d`: Runs the container in detached mode (in the background).
-- `-p 80:5000`: Maps port 80 on the host to port 5000 in the container. This allows you to access the application directly via the server's IP address without specifying a port.
+- `-p 80:5001`: Maps port 80 on the host to port 5001 in the container. This allows you to access the application directly via the server's IP address without specifying a port.
 - `--name report-app-container`: Assigns a name to the container for easy management.
 - `-v $(pwd)/instance:/app/instance`: Mounts the `instance` directory from the host to the container. This ensures that your database and uploaded files persist even if the container is removed and recreated.
 - `--env-file .env`: Loads the environment variables from the `.env` file you created.
 - `report-app`: The name of the image to run.
 
 ### 4. Initial Database Setup (First-Time Deployment)
-On the first run, you need to initialize the database inside the container:
+On the first run, you need to initialize the database and user roles inside the container:
 ```bash
 sudo docker exec -it report-app-container flask db upgrade
+sudo docker exec -it report-app-container flask setup-roles
+sudo docker exec -it report-app-container flask create-owner
 ```
 
 ### 5. Accessing the Application
